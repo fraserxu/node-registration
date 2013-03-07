@@ -6,6 +6,11 @@ var express = require('express')
   , bcrypt = require('bcrypt')
   , nodemailer = require("nodemailer")
   , SALT_WORK_FACTOR = 10;
+
+// configure data for easy test
+var siteUrl = 'http://localhost:3000'
+  , auth_email = "user@gmail.com"
+  , auth_password = "password";
   
 mongoose.connect('localhost', 'test');
 var db = mongoose.connection;
@@ -17,8 +22,8 @@ db.once('open', function callback() {
 var smtpTransport = nodemailer.createTransport("SMTP",{
     service: "Gmail",
     auth: {
-        user: "fraserxv@gmail.com",
-        pass: "password"
+        user: auth_email,
+        pass: auth_password
     }
 });
 
@@ -50,25 +55,6 @@ activationSchema.pre('save', function(next) {
     });
   });
 });
-
-activationSchema.methods.compareEmail = function(candidateEmail, cb) {
-  bcrypt.compare(candidateEmail, this.hashedEmail, function(err, isMatch) {
-    if(err) return cb(err);
-    cb(null, isMatch);
-  });
-};
-
-// Remember Me implementation helper method
-activationSchema.methods.generateRandomToken = function () {
-  var _status = this,
-      chars = "_!abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",
-      token = new Date().getTime() + '_';
-  for ( var x = 0; x < 16; x++ ) {
-    var i = Math.floor( Math.random() * 62 );
-    token += chars.charAt( i );
-  }
-  return token;
-};
 
 // Bcrypt middleware
 userSchema.pre('save', function(next) {
@@ -201,13 +187,13 @@ app.post('/activate', checkStatus ,function(req, res) {
       console.log(err);
     } else {
       var mailOptions = {
-        from: "Fraser Xu ✔ <fraserxv@gmail.com>", // sender address
+        from: 'Fraser Xu ✔ ' + auth_email, // sender address
         to: data.email, // list of receivers
         subject: "Signup Confirmation ✔", // Subject line
         text: "Signup Confirmation ✔", // plaintext body
         html: '<b>Signup Confirmation ✔</b><br />'
             + 'Your email account is : ' + data.email + '<br />'
-            + '<a href="http://localhost:3000/signup?token=' + data.hashedEmail + '">Click here to activate your account.</a>'
+            + '<a href="'+ siteUrl +'/signup?token=' + data.hashedEmail + '">Click here to activate your account.</a>'
       };
       smtpTransport.sendMail(mailOptions);
       res.send('We have just drop you an email, please check your mail to avtivate your account!');
