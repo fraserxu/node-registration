@@ -1,0 +1,16 @@
+<% layout('layout') -%>
+<% if (!user) { %>
+	<h2>Welcome! But nothing here right now.</h2>
+<% } else { %>
+	<h2>Hello, <%= user.username %>.</h2>
+<% } %>
+    <img src="https://a248.e.akamai.net/camo.github.com/7f8d3c064e3a4f187ec1fc0e0fe291dd8aeded3b/687474703a2f2f6f63746f6465782e6769746875622e636f6d2f696d616765732f6d6f6e726f652e6a7067" width="400" height="400">
+<% if (!user) { %>
+    <p>If you like us, please give us your email to get yourself connected to us!</p>
+    <form action="activate" method="post">
+        <label for="email">Email : </label>
+        <input type="email" name="email" />
+        <br />
+        <input type="submit" value="submit" />
+    </form>
+<% } %>
