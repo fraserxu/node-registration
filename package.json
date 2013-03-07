@@ -12,5 +12,11 @@
     "mongoose": ">= 0.0.0",
     "bcrypt": ">= 0.0.0",
     "nodemailer": "*"
+  },
+  "devDependencies": {
+    "nodemon": "*",
+    "mocha": "*",
+    "superagent": "*",
+    "should": "*"
   }
 }
