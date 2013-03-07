@@ -17,7 +17,7 @@ db.once('open', function callback() {
 var smtpTransport = nodemailer.createTransport("SMTP",{
     service: "Gmail",
     auth: {
-        user: "user@gmail.com",
+        user: "fraserxv@gmail.com",
         pass: "password"
     }
 });
@@ -33,7 +33,8 @@ var userSchema = mongoose.Schema({
 var activationSchema = mongoose.Schema({
   email: { type: String, required: true, unique: true},
   hashedEmail: { type: String, required: true, unique: true },
-  verifyStatus: Boolean // Used to check status
+  verifyStatus: Boolean, // Used to check status
+  createdAt: { type: Date, expires: '1.5h' }
 });
 
 activationSchema.pre('save', function(next) {
@@ -106,27 +107,10 @@ userSchema.methods.generateRandomToken = function () {
   return token;
 };
 
-// Seed a user
-// var User = mongoose.model('User', userSchema);
-// var usr = new User({ username: 'bob', email: 'bob@example.com', password: 'secret' });
-// usr.save(function(err) {
-//   if(err) {
-//     console.log(err);
-//   } else {
-//     console.log('user: ' + usr.username + " " + usr.password + " saved.");
-//   }
-// });
 var User = mongoose.model('User', userSchema);
 // Activation Status
 var As = mongoose.model('As', activationSchema);
 
-// Passport session setup.
-//   To support persistent login sessions, Passport needs to be able to
-//   serialize users into and deserialize users out of the session.  Typically,
-//   this will be as simple as storing the user ID when serializing, and finding
-//   the user by ID when deserializing.
-//
-//   Both serializer and deserializer edited for Remember Me functionality
 passport.serializeUser(function(user, done) {
   var createAccessToken = function () {
     var token = user.generateRandomToken();
@@ -156,11 +140,6 @@ passport.deserializeUser(function(token, done) {
 });
 
 
-// Use the LocalStrategy within Passport.
-//   Strategies in passport require a `verify` function, which accept
-//   credentials (in this case, a username and password), and invoke a callback
-//   with a user object.  In the real world, this would query a database;
-//   however, in this example we are using a baked-in set of users.
 passport.use(new LocalStrategy(function(username, password, done) {
   User.findOne({ username: username }, function(err, user) {
     if (err) { return done(err); }
@@ -208,74 +187,13 @@ app.configure(function() {
   app.use(express.static(__dirname + '/../../public'));
 });
 
-
+// index router
 app.get('/', function(req, res){
   res.render('index', { user: req.user });
 });
 
-app.get('/account', ensureAuthenticated, function(req, res){
-  res.render('account', { user: req.user });
-});
-
-app.get('/signup', function(req, res) {
-  var token = req.query["token"];
-  As.findOne({ hashedEmail: token }, function(err, data) {
-    var _email = data.email;
-    data.verifyStatus = true;
-    data.save();
-    res.render('signup', { message: 'Please signup', email: _email });
-  });  
-})
-
-app.get('/login', function(req, res){
-  res.render('login', { user: req.user, message: req.session.messages });
-});
-
-// POST /login
-//   Use passport.authenticate() as route middleware to authenticate the
-//   request.  If authentication fails, the user will be redirected back to the
-//   login page.  Otherwise, the primary route function function will be called,
-//   which, in this example, will redirect the user to the home page.
-//
-//   curl -v -d "username=bob&password=secret" http://127.0.0.1:3000/login
-//   
-/***** This version has a problem with flash messages
-app.post('/login', 
-  passport.authenticate('local', { failureRedirect: '/login', failureFlash: true }),
-  function(req, res) {
-    res.redirect('/');
-  });
-*/
-  
-// POST /login
-//   This is an alternative implementation that uses a custom callback to
-//   acheive the same functionality.
-app.post('/login', function(req, res, next) {
-  passport.authenticate('local', function(err, user, info) {
-    if (err) { return next(err) }
-    if (!user) {
-      req.session.messages =  [info.message];
-      return res.redirect('/login')
-    }
-    req.logIn(user, function(err) {
-      if (err) { return next(err); }
-      return res.redirect('/');
-    });
-  })(req, res, next);
-});
-
-app.post('/signup', function(req, res) {
-  var usr = new User({ username: req.body.username, email: req.body.email, password: req.body.password });
-  usr.save(function(err) {
-    if(err) {
-      console.log(err);
-    } else {     
-      res.redirect('/login');
-    }
-  });
-});
-
-app.post('/activate', function(req, res) {
+// activate router
+app.post('/activate', checkStatus ,function(req, res) {
   var _mail = req.body.email;
   var activationStatus = new As({ email: _mail, hashedEmail: _mail, verifyStatus: false });
   activationStatus.save(function(err, data) {
@@ -294,10 +212,58 @@ app.post('/activate', function(req, res) {
       smtpTransport.sendMail(mailOptions);
       res.send('We have just drop you an email, please check your mail to avtivate your account!');
     }
-  });
-  
+  });  
 });
 
+// signup get router
+app.get('/signup', function(req, res) {
+  var token = req.query["token"];
+  As.findOne({ hashedEmail: token }, function(err, data) {
+    var _email = data.email;
+    data.verifyStatus = true;
+    data.save();
+    res.render('signup', { message: 'Please signup', email: _email });
+  });  
+})
+
+// signup post router
+app.post('/signup', function(req, res) {
+  var usr = new User({ username: req.body.username, email: req.body.email, password: req.body.password });
+  usr.save(function(err) {
+    if(err) {
+      console.log(err);
+    } else {     
+      res.redirect('/login');
+    }
+  });
+});
+
+// login get router
+app.get('/login', function(req, res){
+  res.render('login', { user: req.user, message: req.session.messages });
+});
+
+// login post router
+app.post('/login', function(req, res, next) {
+  passport.authenticate('local', function(err, user, info) {
+    if (err) { return next(err) }
+    if (!user) {
+      req.session.messages =  [info.message];
+      return res.redirect('/login')
+    }
+    req.logIn(user, function(err) {
+      if (err) { return next(err); }
+      return res.redirect('/');
+    });
+  })(req, res, next);
+});
+
+// account get router
+app.get('/account', ensureAuthenticated, function(req, res){
+  res.render('account', { user: req.user });
+});
+
+// account logout router
 app.get('/logout', function(req, res){
   req.logout();
   res.redirect('/');
@@ -316,6 +282,23 @@ app.listen(3000, function() {
 function ensureAuthenticated(req, res, next) {
   if (req.isAuthenticated()) { return next(); }
   res.redirect('/login')
+}
+
+// Status check middlewar. Check if confirmation email has send before
+// note that the data will be expired in 1.5h, so the user can only be send another email after 1.5h
+// If there's no record in the database, then create a new recoad for the emailStatus
+function checkStatus(req, res, next) {
+  As.findOne({ email: req.body.email }, function(err, data) {
+    if (err) { 
+      console.log(err); 
+    } else if ( data === null) {
+      return( next() );
+    } else if ( data.verifyStatus === true ) {
+      res.send('Your account has already been activated. Just head to the login page.');
+    } else {
+      res.send('An email has been send before, please check your mail to activate your account. Note that you can only get another mail after 1.5h. Thanks!');
+    }
+  })
 }
 
 
