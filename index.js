@@ -5,14 +5,20 @@ var express = require('express')
   , mongoose = require('mongoose')
   , bcrypt = require('bcrypt')
   , nodemailer = require("nodemailer")
-  , SALT_WORK_FACTOR = 10;
+  , SALT_WORK_FACTOR = 10
+  , icnf = require("icnf")(__dirname);
 
-// configure data for easy test
-var siteUrl = 'http://localhost:3000'
-  , auth_email = "user@gmail.com"
-  , auth_password = "password";
+// configure
+var config = icnf();
+var config = icnf('development');
+var siteUrl = config.appInfo.url
+  , auth_email = config.appInfo.auth_email
+  , auth_password = config.appInfo.auth_password;
+
+var dbUrl = config.dbInfo.url
+  , dbName = config.dbInfo.name;
   
-mongoose.connect('localhost', 'test');
+mongoose.connect(dbUrl, dbName);
 var db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
 db.once('open', function callback() {
@@ -35,6 +41,7 @@ var userSchema = mongoose.Schema({
   accessToken: { type: String } // Used for Remember Me
 });
 
+// Activation Schema
 var activationSchema = mongoose.Schema({
   email: { type: String, required: true, unique: true},
   hashedEmail: { type: String, required: true, unique: true },

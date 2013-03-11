@@ -1,0 +1,12 @@
+{
+    "appInfo": {
+        "url": "http://localhost:3000",
+        "auth_email": "user@gmail.com",
+        "auth_password": "password"
+    },
+    "dbInfo": {
+        "name": "test",
+        "url": "localhost"
+    }
+    
+}
