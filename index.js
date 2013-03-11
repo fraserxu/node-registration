@@ -123,7 +123,7 @@ passport.serializeUser(function(user, done) {
 
   if ( user._id ) {
     createAccessToken();
-  }
+  };
 });
 
 passport.deserializeUser(function(token, done) {
@@ -135,7 +135,7 @@ passport.deserializeUser(function(token, done) {
 
 passport.use(new LocalStrategy(function(username, password, done) {
   User.findOne({ username: username }, function(err, user) {
-    if (err) { return done(err); }
+    if (err) {return done(err);};
     if (!user) { return done(null, false, { message: 'Unknown user ' + username }); }
     user.comparePassword(password, function(err, isMatch) {
       if (err) return done(err);
@@ -191,7 +191,7 @@ app.post('/activate', checkStatus ,function(req, res) {
   var activationStatus = new As({ email: _mail, hashedEmail: _mail, verifyStatus: false });
   activationStatus.save(function(err, data) {
     if(err) {
-      console.log(err);
+      return next(err);
     } else {
       var mailOptions = {
         from: 'Fraser Xu ✔ ' + auth_email, // sender address
@@ -209,26 +209,44 @@ app.post('/activate', checkStatus ,function(req, res) {
 });
 
 // signup get router
-app.get('/signup', function(req, res) {
+app.get('/signup', spamMid, function(req, res) {
   var token = req.query["token"];
   As.findOne({ hashedEmail: token }, function(err, data) {
-    var _email = data.email;
-    data.verifyStatus = true;
-    data.save();
-    res.render('signup', { message: 'Please signup', email: _email });
+    if(err) { return next(err) };
+    if(!data) {
+      res.send('Token not found. Where are u come from?')
+    } else {
+      var _email = data.email;
+      if ( data.verifyStatus == true) {
+        res.send('Your account has already been activated. Just head to the login page.');
+      } else {
+        res.render('signup_token', { message: 'Please signup', email: _email });  
+      }  
+    };
   });  
 })
 
 // signup post router
-app.post('/signup', function(req, res) {
+app.post('/signup', function(req, res, next) {
   var usr = new User({ username: req.body.username, email: req.body.email, password: req.body.password });
-  usr.save(function(err) {
-    if(err) {
-      console.log(err);
-    } else {     
-      res.redirect('/login');
-    }
+  User.findOne({username: usr.username}, function(err, data) {
+    if(err) return next(err);
+    if(data) {
+      res.send('Oops, this username has been taken. Please try another one.');
+    } else {
+      usr.save(function(err) {
+        if(err) {
+          return next(err);
+        } else {
+          As.update({email: usr.email}, {verifyStatus: true}, function(err) {
+            if(err) return next(err);
+          })
+          res.redirect('/login');
+        }
+      });  
+    };
   });
+  
 });
 
 // login get router
@@ -277,13 +295,13 @@ function ensureAuthenticated(req, res, next) {
   res.redirect('/login')
 }
 
-// Status check middlewar. Check if confirmation email has send before
+// Status check middleware. Check if confirmation email has send before
 // note that the data will be expired in 1.5h, so the user can only be send another email after 1.5h
 // If there's no record in the database, then create a new recoad for the emailStatus
 function checkStatus(req, res, next) {
   As.findOne({ email: req.body.email }, function(err, data) {
     if (err) { 
-      console.log(err); 
+      return next(err); 
     } else if ( data === null) {
       return( next() );
     } else if ( data.verifyStatus === true ) {
@@ -291,7 +309,17 @@ function checkStatus(req, res, next) {
     } else {
       res.send('An email has been send before, please check your mail to activate your account. Note that you can only get another mail after 1.5h. Thanks!');
     }
-  })
+  });  
 }
 
+// spamMid middleware.
+// to stop user from register the second time
+function spamMid(req, res, next) {
+  var token = req.query["token"];
+  if (token == undefined) {
+    res.render('signup');
+  } else {
+    return( next() );
+  }
+}
 

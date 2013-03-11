@@ -19,5 +19,8 @@
     "mocha": "*",
     "superagent": "*",
     "should": "*"
+  },
+  "scripts": {
+    "start": "nodemon index.js"
   }
 }

@@ -1,20 +1,7 @@
-<% if (message) { %>
-<p><%= message %></p>
-<% } %>
-<form action="/signup" method="post">
-    <div>
-    <label>Email:</label>
-    <input type="email" name="email" value="<%= email %>" readonly><br/>
-    </div>
-    <div>
-    <label>Username:</label>
-    <input type="text" name="username"><br/>
-    </div>
-    <div>
-    <label>Password:</label>
-    <input type="password" name="password"><br/>
-    </div>
-    <div>
-    <input type="submit" value="Submit"/>
-    </div>
+<p>If you like us, please give us your email to get yourself connected to us!</p>
+<form action="activate" method="post">
+    <label for="email">Email : </label>
+    <input type="email" name="email" />
+    <br />
+    <input type="submit" value="submit" />
 </form>
