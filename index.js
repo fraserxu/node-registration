@@ -1,108 +1,12 @@
 var express = require('express')
   , passport = require('passport')
-  , LocalStrategy = require('passport-local').Strategy
-  , mongodb = require('mongodb')
-  , mongoose = require('mongoose')
-  , bcrypt = require('bcrypt')
-  , nodemailer = require("nodemailer")
-  , SALT_WORK_FACTOR = 10
-  , icnf = require("icnf")(__dirname);
+  , LocalStrategy = require('passport-local').Strategy;
 
-// configure
-var config = icnf();
-var config = icnf('development');
-var siteUrl = config.appInfo.url
-  , auth_email = config.appInfo.auth_email
-  , auth_password = config.appInfo.auth_password;
+var siteUrl = 'fraserxv@gmail.com';
 
-var dbUrl = config.dbInfo.url
-  , dbName = config.dbInfo.name;
-  
-mongoose.connect(dbUrl, dbName);
-var db = mongoose.connection;
-db.on('error', console.error.bind(console, 'connection error:'));
-db.once('open', function callback() {
-  console.log('Connected to DB');
-});
-
-var smtpTransport = nodemailer.createTransport("SMTP",{
-    service: "Gmail",
-    auth: {
-        user: auth_email,
-        pass: auth_password
-    }
-});
-
-// User Schema
-var userSchema = mongoose.Schema({
-  username: { type: String, required: true, unique: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true},
-  accessToken: { type: String } // Used for Remember Me
-});
-
-// Activation Schema
-var activationSchema = mongoose.Schema({
-  email: { type: String, required: true, unique: true},
-  hashedEmail: { type: String, required: true, unique: true },
-  verifyStatus: Boolean, // Used to check status
-  createdAt: { type: Date, expires: '1.5h' }
-});
-
-activationSchema.pre('save', function(next) {
-  var _status = this;
-
-  bcrypt.genSalt(SALT_WORK_FACTOR, function(err, salt) {
-    if(err) return next(err);
-
-    bcrypt.hash(_status.email, salt, function(err, hash) {
-      if(err) return next(err);
-      _status.hashedEmail = hash;
-      next();
-    });
-  });
-});
-
-// Bcrypt middleware
-userSchema.pre('save', function(next) {
-	var user = this;
-
-	if(!user.isModified('password')) return next();
-
-	bcrypt.genSalt(SALT_WORK_FACTOR, function(err, salt) {
-		if(err) return next(err);
-
-		bcrypt.hash(user.password, salt, function(err, hash) {
-			if(err) return next(err);
-			user.password = hash;
-			next();
-		});
-	});
-});
-
-// Password verification
-userSchema.methods.comparePassword = function(candidatePassword, cb) {
-	bcrypt.compare(candidatePassword, this.password, function(err, isMatch) {
-		if(err) return cb(err);
-		cb(null, isMatch);
-	});
-};
-
-// Remember Me implementation helper method
-userSchema.methods.generateRandomToken = function () {
-  var user = this,
-      chars = "_!abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",
-      token = new Date().getTime() + '_';
-  for ( var x = 0; x < 16; x++ ) {
-    var i = Math.floor( Math.random() * 62 );
-    token += chars.charAt( i );
-  }
-  return token;
-};
-
-var User = mongoose.model('User', userSchema);
-// Activation Status
-var As = mongoose.model('As', activationSchema);
+var User = require('./models/user').User;
+var As = require('./models/activate').As;
+var smtpTransport = require('./models/mail').smtpTransport;
 
 passport.serializeUser(function(user, done) {
   var createAccessToken = function () {
