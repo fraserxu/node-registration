@@ -2,7 +2,7 @@ var express = require('express')
   , passport = require('passport')
   , LocalStrategy = require('passport-local').Strategy;
 
-var siteUrl = 'fraserxv@gmail.com';
+var siteUrl = 'localhost:3000';
 
 var User = require('./models/user').User;
 var As = require('./models/activate').As;
